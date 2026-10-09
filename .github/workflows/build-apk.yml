@@ -32,34 +32,11 @@ jobs:
           unzip -q AppLockMinimal-AndroidStudio.zip
           test -f AppLockMinimal/settings.gradle.kts
 
-      - name: Create JVM alignment script
-        run: |
-          cat > /tmp/align-jvm-targets.gradle <<'GRADLE'
-          allprojects {
-              tasks.withType(org.gradle.api.tasks.compile.JavaCompile).configureEach {
-                  sourceCompatibility = '17'
-                  targetCompatibility = '17'
-              }
-
-              plugins.withId('org.jetbrains.kotlin.android') {
-                  tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-                      kotlinOptions.jvmTarget = '17'
-                  }
-              }
-
-              plugins.withId('org.jetbrains.kotlin.jvm') {
-                  tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-                      kotlinOptions.jvmTarget = '17'
-                  }
-              }
-          }
-          GRADLE
-
       - name: Build debug APK
         run: |
           gradle -p AppLockMinimal \
             --no-daemon \
-            -I /tmp/align-jvm-targets.gradle \
+            -Pkotlin.jvm.target.validation.mode=warning \
             assembleDebug
 
       - name: Upload APK
