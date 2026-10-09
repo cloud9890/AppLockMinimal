@@ -32,54 +32,35 @@ jobs:
           unzip -q AppLockMinimal-AndroidStudio.zip
           test -f AppLockMinimal/settings.gradle.kts
 
-      - name: Align Java and Kotlin targets
+      - name: Create JVM alignment script
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
+          cat > /tmp/align-jvm-targets.gradle <<'GRADLE'
+          allprojects {
+              tasks.withType(org.gradle.api.tasks.compile.JavaCompile).configureEach {
+                  sourceCompatibility = '17'
+                  targetCompatibility = '17'
+              }
 
-          root = Path("AppLockMinimal")
+              plugins.withId('org.jetbrains.kotlin.android') {
+                  tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+                      kotlinOptions.jvmTarget = '17'
+                  }
+              }
 
-          for p in root.rglob("*"):
-              if not p.is_file():
-                  continue
-              if p.suffix not in (".gradle", ".kts"):
-                  continue
-
-              s = p.read_text()
-              original = s
-
-              # Align Java compilation with Kotlin JVM 17.
-              s = s.replace(
-                  "JavaVersion.VERSION_1_8",
-                  "JavaVersion.VERSION_17"
-              )
-              s = s.replace(
-                  "JavaVersion.VERSION_11",
-                  "JavaVersion.VERSION_17"
-              )
-
-              # Support common Kotlin DSL/Groovy target syntax.
-              s = s.replace(
-                  'jvmTarget = "1.8"',
-                  'jvmTarget = "17"'
-              )
-              s = s.replace(
-                  "jvmTarget = '1.8'",
-                  "jvmTarget = '17'"
-              )
-              s = s.replace(
-                  "JvmTarget.JVM_1_8",
-                  "JvmTarget.JVM_17"
-              )
-
-              if s != original:
-                  p.write_text(s)
-                  print(f"Updated {p}")
-
-          PY
+              plugins.withId('org.jetbrains.kotlin.jvm') {
+                  tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+                      kotlinOptions.jvmTarget = '17'
+                  }
+              }
+          }
+          GRADLE
 
       - name: Build debug APK
-        run: gradle -p AppLockMinimal --no-daemon assembleDebug
+        run: |
+          gradle -p AppLockMinimal \
+            --no-daemon \
+            -I /tmp/align-jvm-targets.gradle \
+            assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
