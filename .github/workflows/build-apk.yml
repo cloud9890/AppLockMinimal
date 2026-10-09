@@ -5,6 +5,7 @@ name: Build AppLock APK
   workflow_dispatch:
   push:
     paths:
+      - 'AppLockMinimal-AndroidStudio.zip'
       - '.github/workflows/build-apk.yml'
 
 permissions:
